@@ -23,4 +23,22 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/motorista/login")
+    public ResponseEntity<?> loginMotorista(@RequestBody LoginRequest request) {
+        try {
+            return ResponseEntity.ok(authService.loginMotorista(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/passageiro/login")
+    public ResponseEntity<?> loginPassageiro(@RequestBody LoginRequest request) {
+        try {
+            return ResponseEntity.ok(authService.loginPassageiro(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
+    }
+
 }
