@@ -1,5 +1,5 @@
 package com.unibus.unibus_api.controller;
-
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.unibus.unibus_api.dto.LoginRequest;
 import com.unibus.unibus_api.dto.LoginResponse;
 import com.unibus.unibus_api.service.AuthService;
@@ -11,11 +11,22 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
     private final AuthService authService;
+    private final PasswordEncoder passwordEncoder;
+
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            return ResponseEntity.ok(authService.login(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
     }
+
+    @GetMapping("/hash")
+    public String hash(@RequestParam String senha) {
+        return passwordEncoder.encode(senha);
+    }
+
 }
