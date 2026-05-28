@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
-    private final PasswordEncoder passwordEncoder;
 
 
     @PostMapping("/login")
@@ -22,11 +21,6 @@ public class AuthController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
-    }
-
-    @GetMapping("/hash")
-    public String hash(@RequestParam String senha) {
-        return passwordEncoder.encode(senha);
     }
 
 }
