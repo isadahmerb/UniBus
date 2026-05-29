@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <h1>UniBus</h1>
+            <p>Acesse o painel administrativo</p>
+
+            <div id="alert" class="alert alert-error" style="display:none;"></div>
+
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="email" placeholder="seu@email.com">
+            </div>
+
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="senha" placeholder="••••••••">
+            </div>
+
+            <button class="btn btn-primary" onclick="login()">Entrar</button>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        async function login() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const alert = document.getElementById('alert');
+
+            alert.style.display = 'none';
+
+            if (!email || !senha) {
+                alert.textContent = 'Preencha todos os campos.';
+                alert.style.display = 'block';
+                return;
+            }
+
+            const response = await api.post('/auth/login', { email, senha });
+
+            if (!response || !response.ok) {
+                alert.textContent = 'E-mail ou senha incorretos.';
+                alert.style.display = 'block';
+                return;
+            }
+
+            const data = await response.json();
+            setToken(data.token);
+            localStorage.setItem('usuario', data.nome);
+            window.location.href = 'admin/dashboard.html';
+        }
+
+        // Redireciona se já estiver logado
+        if (getToken()) {
+            window.location.href = 'admin/dashboard.html';
+        }
+    </script>
+</body>
+</html>
