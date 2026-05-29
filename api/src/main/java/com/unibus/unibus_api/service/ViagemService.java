@@ -1,5 +1,7 @@
 package com.unibus.unibus_api.service;
 
+import com.unibus.unibus_api.dto.ConfirmacaoPresencaResponse;
+import com.unibus.unibus_api.repository.ConfirmacaoPresencaRepository;
 import com.unibus.unibus_api.dto.ViagemRequest;
 import com.unibus.unibus_api.dto.ViagemResponse;
 import com.unibus.unibus_api.entity.*;
@@ -13,7 +15,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ViagemService {
-
+    private final ConfirmacaoPresencaRepository confirmacaoRepository;
     private final ViagemRepository viagemRepository;
     private final RotaRepository rotaRepository;
     private final MotoristaRepository motoristaRepository;
@@ -52,5 +54,16 @@ public class ViagemService {
         viagem.setStatus(Viagem.StatusViagem.valueOf(status));
         viagemRepository.save(viagem);
         return new ViagemResponse(viagem);
+    }
+
+    public List<ConfirmacaoPresencaResponse> getRoteiroDodia(Long viagemId) {
+        viagemRepository.findById(viagemId)
+                .orElseThrow(() -> new RuntimeException("Viagem não encontrada"));
+
+        return confirmacaoRepository.findByViagemId(viagemId)
+                .stream()
+                .filter(c -> c.getStatus() == ConfirmacaoPresenca.StatusPresenca.CONFIRMADO)
+                .map(ConfirmacaoPresencaResponse::new)
+                .collect(Collectors.toList());
     }
 }

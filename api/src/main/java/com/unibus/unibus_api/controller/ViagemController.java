@@ -1,5 +1,6 @@
 package com.unibus.unibus_api.controller;
 
+import com.unibus.unibus_api.dto.ConfirmacaoPresencaResponse;
 import com.unibus.unibus_api.dto.ViagemRequest;
 import com.unibus.unibus_api.dto.ViagemResponse;
 import com.unibus.unibus_api.service.ViagemService;
@@ -35,5 +36,10 @@ public class ViagemController {
     public ResponseEntity<ViagemResponse> atualizarStatus(@PathVariable Long id,
                                                           @RequestParam String status) {
         return ResponseEntity.ok(viagemService.atualizarStatus(id, status));
+    }
+
+    @GetMapping("/{id}/roteiro")
+    public ResponseEntity<List<ConfirmacaoPresencaResponse>> getRoteiro(@PathVariable Long id) {
+        return ResponseEntity.ok(viagemService.getRoteiroDodia(id));
     }
 }
