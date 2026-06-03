@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>UniBus</h2>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <a href="motoristas.html" class="nav-link">Motoristas</a>
+            <a href="rotas.html" class="nav-link">Rotas</a>
+            <a href="contratos.html" class="nav-link">Contratos</a>
+            <span id="nomeAdmin"></span>
+            <button onclick="logout()">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="grid-3" style="margin-top:24px;">
+            <div class="stat-card" onclick="window.location.href='motoristas.html'" style="cursor:pointer;">
+                <div class="number" id="totalMotoristas">—</div>
+                <div class="label">Motoristas</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='rotas.html'" style="cursor:pointer;">
+                <div class="number" id="totalRotas">—</div>
+                <div class="label">Rotas</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='contratos.html'" style="cursor:pointer;">
+                <div class="number" id="totalContratos">—</div>
+                <div class="label">Contratos</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2>Motoristas</h2>
+                <button class="btn btn-danger" onclick="window.location.href='motoristas.html'">Ver todos</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>CNH</th>
+                        <th>Vencimento CNH</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaMotoristas"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '../index.html';
+
+        document.getElementById('nomeAdmin').textContent = localStorage.getItem('usuario') || 'Admin';
+
+        async function carregarDados() {
+            const [motoristas, rotas] = await Promise.all([
+                api.get('/motoristas').then(r => r.json()),
+                api.get('/rotas').then(r => r.json()),
+            ]);
+
+            document.getElementById('totalMotoristas').textContent = motoristas.length;
+            document.getElementById('totalRotas').textContent = rotas.length;
+            document.getElementById('totalContratos').textContent = '—';
+
+            const tbody = document.getElementById('tabelaMotoristas');
+            tbody.innerHTML = motoristas.map(m => `
+                <tr>
+                    <td>${m.nome}</td>
+                    <td>${m.email}</td>
+                    <td>${m.numeroCnh || '—'}</td>
+                    <td>${m.vencimentoCnh || '—'}</td>
+                    <td><span class="badge ${m.ativo ? 'badge-success' : 'badge-danger'}">${m.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>

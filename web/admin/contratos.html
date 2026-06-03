@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Contratos</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>UniBus</h2>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <a href="dashboard.html" class="nav-link">Dashboard</a>
+            <a href="motoristas.html" class="nav-link">Motoristas</a>
+            <a href="rotas.html" class="nav-link">Rotas</a>
+            <a href="contratos.html" class="nav-link">Contratos</a>
+            <span id="nomeAdmin"></span>
+            <button onclick="logout()">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="grid-3" style="margin-top:24px;">
+            <div class="stat-card">
+                <div class="number" id="totalVigentes">—</div>
+                <div class="label">Vigentes</div>
+            </div>
+            <div class="stat-card" style="border: 1px solid #f0a500;">
+                <div class="number" id="totalAExpirar" style="color:#f0a500;">—</div>
+                <div class="label">A Expirar</div>
+            </div>
+            <div class="stat-card" style="border: 1px solid #e05555;">
+                <div class="number" id="totalExpirados" style="color:#e05555;">—</div>
+                <div class="label">Expirados</div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2>Contratos</h2>
+                <button class="btn btn-danger" onclick="abrirModal()">+ Novo Contrato</button>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-bottom:16px;">
+                <button class="btn btn-secondary" onclick="filtrar('todos')">Todos</button>
+                <button class="btn btn-success" onclick="filtrar('VIGENTE')">Vigentes</button>
+                <button class="btn btn-secondary" style="background:#f0a500;" onclick="filtrar('A_EXPIRAR')">A Expirar</button>
+                <button class="btn btn-danger" onclick="filtrar('EXPIRADO')">Expirados</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Passageiro</th>
+                        <th>Rota</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaContratos"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal novo contrato -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3>Novo Contrato</h3>
+            <div class="form-group">
+                <label>Passageiro</label>
+                <select id="passageiroId"></select>
+            </div>
+            <div class="form-group">
+                <label>Rota</label>
+                <select id="rotaId"></select>
+            </div>
+            <div class="form-group">
+                <label>Data de Início</label>
+                <input type="date" id="dataInicio">
+            </div>
+            <div class="form-group">
+                <label>Data de Fim</label>
+                <input type="date" id="dataFim">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="criarContrato()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal renovar -->
+    <div class="modal-overlay" id="modalRenovar">
+        <div class="modal">
+            <h3>Renovar Contrato</h3>
+            <input type="hidden" id="contratoIdRenovar">
+            <div class="form-group">
+                <label>Nova Data de Fim</label>
+                <input type="date" id="novaDataFim">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModalRenovar()">Cancelar</button>
+                <button class="btn btn-success" onclick="renovarContrato()">Renovar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '../index.html';
+        document.getElementById('nomeAdmin').textContent = localStorage.getItem('usuario') || 'Admin';
+
+        let todosContratos = [];
+
+        async function carregarDados() {
+            const [contratos, passageiros, rotas] = await Promise.all([
+                api.get('/contratos').then(r => r.json()),
+                api.get('/passageiros').then(r => r.json()),
+                api.get('/rotas').then(r => r.json()),
+            ]);
+
+            todosContratos = contratos;
+
+            document.getElementById('totalVigentes').textContent = contratos.filter(c => c.status === 'VIGENTE').length;
+            document.getElementById('totalAExpirar').textContent = contratos.filter(c => c.status === 'A_EXPIRAR').length;
+            document.getElementById('totalExpirados').textContent = contratos.filter(c => c.status === 'EXPIRADO').length;
+
+            const selectPassageiro = document.getElementById('passageiroId');
+            selectPassageiro.innerHTML = passageiros.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+
+            const selectRota = document.getElementById('rotaId');
+            selectRota.innerHTML = rotas.map(r => `<option value="${r.id}">${r.nome}</option>`).join('');
+
+            renderTabela(contratos);
+        }
+
+        function renderTabela(contratos) {
+            const tbody = document.getElementById('tabelaContratos');
+            tbody.innerHTML = contratos.map(c => `
+                <tr>
+                    <td>${c.passageiroNome}</td>
+                    <td>${c.rotaNome}</td>
+                    <td>${c.dataInicio}</td>
+                    <td>${c.dataFim}</td>
+                    <td><span class="badge ${badgeClass(c.status)}">${statusLabel(c.status)}</span></td>
+                    <td>
+                        <button class="btn btn-success" style="padding:4px 10px; font-size:12px;" onclick="abrirRenovar(${c.id})">Renovar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrar(status) {
+            if (status === 'todos') return renderTabela(todosContratos);
+            renderTabela(todosContratos.filter(c => c.status === status));
+        }
+
+        function badgeClass(status) {
+            if (status === 'VIGENTE') return 'badge-success';
+            if (status === 'A_EXPIRAR') return 'badge-warning';
+            return 'badge-danger';
+        }
+
+        function statusLabel(status) {
+            if (status === 'VIGENTE') return 'Vigente';
+            if (status === 'A_EXPIRAR') return 'A Expirar';
+            return 'Expirado';
+        }
+
+        function abrirModal() {
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function abrirRenovar(id) {
+            document.getElementById('contratoIdRenovar').value = id;
+            document.getElementById('modalRenovar').classList.add('active');
+        }
+
+        function fecharModalRenovar() {
+            document.getElementById('modalRenovar').classList.remove('active');
+        }
+
+        async function criarContrato() {
+            const body = {
+                passageiroId: parseInt(document.getElementById('passageiroId').value),
+                rotaId: parseInt(document.getElementById('rotaId').value),
+                dataInicio: document.getElementById('dataInicio').value,
+                dataFim: document.getElementById('dataFim').value,
+            };
+            const response = await api.post('/contratos', body);
+            if (response && response.ok) {
+                fecharModal();
+                carregarDados();
+            }
+        }
+
+        async function renovarContrato() {
+            const id = document.getElementById('contratoIdRenovar').value;
+            const novaDataFim = document.getElementById('novaDataFim').value;
+            const response = await api.patch(`/contratos/${id}/renovar?novaDataFim=${novaDataFim}`);
+            if (response && response.ok) {
+                fecharModalRenovar();
+                carregarDados();
+            }
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>

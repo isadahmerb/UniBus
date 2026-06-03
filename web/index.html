@@ -29,38 +29,37 @@
     </div>
 
     <script src="js/api.js"></script>
-    <script>
-        async function login() {
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            const alert = document.getElementById('alert');
+<script>
+    async function login() {
+        const email = document.getElementById('email').value;
+        const senha = document.getElementById('senha').value;
+        const alertBox = document.getElementById('alert');
 
-            alert.style.display = 'none';
+        alertBox.style.display = 'none';
 
-            if (!email || !senha) {
-                alert.textContent = 'Preencha todos os campos.';
-                alert.style.display = 'block';
-                return;
-            }
-
-            const response = await api.post('/auth/login', { email, senha });
-
-            if (!response || !response.ok) {
-                alert.textContent = 'E-mail ou senha incorretos.';
-                alert.style.display = 'block';
-                return;
-            }
-
-            const data = await response.json();
-            setToken(data.token);
-            localStorage.setItem('usuario', data.nome);
-            window.location.href = 'admin/dashboard.html';
+        if (!email || !senha) {
+            alertBox.textContent = 'Preencha todos os campos.';
+            alertBox.style.display = 'block';
+            return;
         }
 
-        // Redireciona se já estiver logado
-        if (getToken()) {
-            window.location.href = 'admin/dashboard.html';
+        const response = await api.post('/auth/login', { email, senha });
+
+        if (!response || !response.ok) {
+            alertBox.textContent = 'E-mail ou senha incorretos.';
+            alertBox.style.display = 'block';
+            return;
         }
-    </script>
+
+        const data = await response.json();
+        setToken(data.token);
+        localStorage.setItem('usuario', data.nome);
+        window.location.href = 'admin/dashboard.html';
+    }
+
+    if (getToken()) {
+        window.location.href = 'admin/dashboard.html';
+    }
+</script>
 </body>
 </html>
