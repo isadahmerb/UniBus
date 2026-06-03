@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Rotas</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>UniBus</h2>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <a href="dashboard.html" class="nav-link">Inicio</a>
+            <a href="motoristas.html" class="nav-link">Motoristas</a>
+            <a href="rotas.html" class="nav-link">Rotas</a>
+            <a href="contratos.html" class="nav-link">Contratos</a>
+            <span id="nomeAdmin"></span>
+            <button onclick="logout()">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="table-wrapper" style="margin-top:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2>Rotas</h2>
+                <button class="btn btn-danger" onclick="abrirModal()">+ Nova Rota</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Saída</th>
+                        <th>Retorno</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaRotas"></tbody>
+            </table>
+        </div>
+
+        <!-- Seção de passageiros da rota -->
+        <div class="table-wrapper" id="secaoPassageiros" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h2 id="tituloPassageiros">Passageiros</h2>
+                <button class="btn btn-secondary" onclick="fecharPassageiros()">Fechar</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Endereço Padrão</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaPassageiros"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal nova rota -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3>Nova Rota</h3>
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="nome" placeholder="Nome da rota">
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <input type="text" id="descricao" placeholder="Descrição">
+            </div>
+            <div class="form-group">
+                <label>Horário de Saída</label>
+                <input type="time" id="horarioSaida">
+            </div>
+            <div class="form-group">
+                <label>Horário de Retorno</label>
+                <input type="time" id="horarioRetorno">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="criarRota()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (!getToken()) window.location.href = '../index.html';
+        document.getElementById('nomeAdmin').textContent = localStorage.getItem('usuario') || 'Admin';
+
+        let todasRotas = [];
+        let todosPassageiros = [];
+
+        async function carregarDados() {
+            const [rotas, passageiros] = await Promise.all([
+                api.get('/rotas').then(r => r.json()),
+                api.get('/passageiros').then(r => r.json()),
+            ]);
+
+            todasRotas = rotas;
+            todosPassageiros = passageiros;
+
+            renderRotas(rotas);
+        }
+
+        function renderRotas(rotas) {
+            const tbody = document.getElementById('tabelaRotas');
+            tbody.innerHTML = rotas.map(r => `
+                <tr>
+                    <td>${r.nome}</td>
+                    <td>${r.descricao || '—'}</td>
+                    <td>${r.horarioSaida || '—'}</td>
+                    <td>${r.horarioRetorno || '—'}</td>
+                    <td><span class="badge ${r.ativa ? 'badge-success' : 'badge-danger'}">${r.ativa ? 'Ativa' : 'Inativa'}</span></td>
+                    <td style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="verPassageiros(${r.id}, '${r.nome}')">Passageiros</button>
+                        <button class="btn btn-danger" style="padding:4px 10px; font-size:12px;" onclick="desativarRota(${r.id})">Desativar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function verPassageiros(rotaId, rotaNome) {
+            const passageiros = todosPassageiros.filter(p => p.rotaId === rotaId);
+            document.getElementById('tituloPassageiros').textContent = `Passageiros — ${rotaNome}`;
+            const tbody = document.getElementById('tabelaPassageiros');
+            tbody.innerHTML = passageiros.length === 0
+                ? `<tr><td colspan="4" style="text-align:center; color:#9090c0;">Nenhum passageiro nesta rota</td></tr>`
+                : passageiros.map(p => `
+                    <tr>
+                        <td>${p.nome}</td>
+                        <td>${p.email}</td>
+                        <td>${p.enderecoPadrao || '—'}</td>
+                        <td><span class="badge ${p.ativo ? 'badge-success' : 'badge-danger'}">${p.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                    </tr>
+                `).join('');
+            document.getElementById('secaoPassageiros').style.display = 'block';
+            document.getElementById('secaoPassageiros').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function fecharPassageiros() {
+            document.getElementById('secaoPassageiros').style.display = 'none';
+        }
+
+        async function desativarRota(id) {
+            if (!confirm('Desativar esta rota?')) return;
+            const response = await api.delete(`/rotas/${id}`);
+            if (response && response.ok) carregarDados();
+        }
+
+        function abrirModal() {
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        async function criarRota() {
+            const body = {
+                nome: document.getElementById('nome').value,
+                descricao: document.getElementById('descricao').value,
+                horarioSaida: document.getElementById('horarioSaida').value,
+                horarioRetorno: document.getElementById('horarioRetorno').value,
+            };
+            const response = await api.post('/rotas', body);
+            if (response && response.ok) {
+                fecharModal();
+                carregarDados();
+            }
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>

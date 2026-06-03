@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Motorista</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body {
+            background-color: #3d3d6b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .login-mobile {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-area h1 {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .logo-area p {
+            color: #b0b0d0;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            background-color: #4caf7d;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-mobile">
+        <div class="logo-area">
+            <h1>UniBus</h1>
+            <p>Transportes</p>
+            <span class="role-badge">Motorista</span>
+        </div>
+
+        <div id="alertBox" class="alert alert-error" style="display:none;"></div>
+
+        <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" id="email" placeholder="seu@email.com">
+        </div>
+
+        <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="senha" placeholder="••••••••">
+        </div>
+
+        <button class="btn btn-success" style="width:100%; padding:14px; font-size:16px; margin-top:8px;" onclick="login()">
+            Entrar
+        </button>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        if (localStorage.getItem('tokenMotorista')) {
+            window.location.href = 'roteiro.html';
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const alertBox = document.getElementById('alertBox');
+
+            alertBox.style.display = 'none';
+
+            if (!email || !senha) {
+                alertBox.textContent = 'Preencha todos os campos.';
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            const response = await api.post('/auth/motorista/login', { email, senha });
+
+            if (!response || !response.ok) {
+                alertBox.textContent = 'E-mail ou senha incorretos.';
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            const data = await response.json();
+            localStorage.setItem('tokenMotorista', data.token);
+            localStorage.setItem('motorista', JSON.stringify({
+                id: data.id,
+                nome: data.nome,
+                email: data.email
+            }));
+            window.location.href = 'roteiro.html';
+        }
+    </script>
+</body>
+</html>
