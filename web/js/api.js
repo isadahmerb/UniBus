@@ -1,6 +1,10 @@
 const API_URL = 'http://localhost:8080';
 
 function getToken() {
+    // Retorna o token correto dependendo da página atual
+    const path = window.location.pathname;
+    if (path.includes('/motorista/')) return localStorage.getItem('tokenMotorista');
+    if (path.includes('/passageiro/')) return localStorage.getItem('tokenPassageiro');
     return localStorage.getItem('token');
 }
 
@@ -9,9 +13,20 @@ function setToken(token) {
 }
 
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    window.location.href = '/index.html';
+    const path = window.location.pathname;
+    if (path.includes('/motorista/')) {
+        localStorage.removeItem('tokenMotorista');
+        localStorage.removeItem('motorista');
+        window.location.href = '/motorista/login.html';
+    } else if (path.includes('/passageiro/')) {
+        localStorage.removeItem('tokenPassageiro');
+        localStorage.removeItem('passageiro');
+        window.location.href = '/passageiro/login.html';
+    } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+        window.location.href = '/index.html';
+    }
 }
 
 async function request(method, endpoint, body = null) {
