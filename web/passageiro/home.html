@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBus — Passageiro</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        body { padding-bottom: 100px; }
+
+        .header-mobile {
+            background-color: #2d2d55;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-mobile h2 { font-size: 18px; color: #fff; }
+        .header-mobile span { font-size: 13px; color: #b0b0d0; }
+
+        .container-mobile { padding: 16px 20px; }
+
+        .info-card {
+            background-color: #4a4a7a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .info-card h3 {
+            font-size: 14px;
+            color: #b0b0d0;
+            margin-bottom: 8px;
+        }
+
+        .info-card p {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .btn-confirmar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 18px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            background-color: #e05555;
+            color: white;
+        }
+
+        .btn-confirmar.confirmado {
+            background-color: #4caf7d;
+        }
+
+        .btn-confirmar.cancelado {
+            background-color: #7070a0;
+        }
+
+        .localizacao-info {
+            background-color: #4a4a7a;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-mobile">
+        <div>
+            <h2>UniBus</h2>
+            <span>Transportes</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span id="nomePassageiro" style="color:#b0b0d0; font-size:13px;"></span>
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="sair()">Sair</button>
+        </div>
+    </div>
+
+    <div class="container-mobile">
+        <div class="info-card">
+            <h3>Acompanhe seu veículo</h3>
+            <div id="localizacaoInfo" style="color:#9090c0; font-size:14px;">Viagem não iniciada</div>
+        </div>
+
+        <div class="info-card">
+            <h3>Sua rota</h3>
+            <p id="rotaNome">—</p>
+        </div>
+
+        <div class="info-card">
+            <h3>Endereço de embarque</h3>
+            <p id="enderecoDoDia">—</p>
+            <button class="btn btn-secondary" style="margin-top:12px; font-size:13px; padding:8px 14px;" onclick="abrirAlterarEndereco()">
+                Alterar local
+            </button>
+        </div>
+
+        <div class="info-card">
+            <h3>Status da presença</h3>
+            <span id="statusPresenca" class="badge badge-warning">PENDENTE</span>
+        </div>
+    </div>
+
+    <button class="btn-confirmar" id="btnConfirmar" onclick="acaoPresenca()">
+        Confirmar presença
+    </button>
+
+    <!-- Modal selecionar viagem -->
+    <div class="modal-overlay active" id="modalViagem">
+        <div class="modal">
+            <h3>Viagem do dia</h3>
+            <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="dataViagem">
+            </div>
+            <div class="form-group">
+                <label>Viagem</label>
+                <select id="viagemSelect">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="selecionarViagem()" style="width:100%; padding:14px;">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal alterar endereço -->
+    <div class="modal-overlay" id="modalEndereco">
+        <div class="modal">
+            <h3>Alterar local de embarque</h3>
+            <div class="form-group">
+                <label>Novo endereço</label>
+                <input type="text" id="novoEndereco" placeholder="Rua, número, bairro">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="fecharAlterarEndereco()">Cancelar</button>
+                <button class="btn btn-danger" onclick="alterarEndereco()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script>
+        const tokenPassageiro = localStorage.getItem('tokenPassageiro');
+        if (!tokenPassageiro) window.location.href = 'login.html';
+
+        window.getToken = () => localStorage.getItem('tokenPassageiro');
+
+        const passageiro = JSON.parse(localStorage.getItem('passageiro') || '{}');
+        document.getElementById('nomePassageiro').textContent = passageiro.nome || '';
+
+        let viagemAtual = null;
+        let confirmacaoAtual = null;
+        let intervaloLocalizacao = null;
+
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('dataViagem').value = hoje;
+        document.getElementById('dataViagem').addEventListener('change', carregarViagens);
+
+        async function carregarViagens() {
+            const data = document.getElementById('dataViagem').value;
+            const viagens = await api.get('/viagens').then(r => r.json());
+            const passageiroData = await api.get(`/passageiros/${passageiro.id}`).then(r => r.json());
+            const filtradas = viagens.filter(v => v.data === data && v.rotaId === passageiroData.rotaId);
+            const select = document.getElementById('viagemSelect');
+            if (filtradas.length === 0) {
+                select.innerHTML = '<option value="">Nenhuma viagem para esta data</option>';
+            } else {
+                select.innerHTML = filtradas.map(v =>
+                    `<option value="${v.id}">${v.rotaNome}</option>`
+                ).join('');
+            }
+        }
+
+        async function selecionarViagem() {
+            const id = document.getElementById('viagemSelect').value;
+            if (!id) return;
+            const viagens = await api.get('/viagens').then(r => r.json());
+            viagemAtual = viagens.find(v => v.id == id);
+            document.getElementById('rotaNome').textContent = viagemAtual.rotaNome;
+            document.getElementById('modalViagem').classList.remove('active');
+            await carregarConfirmacao();
+            iniciarPollingLocalizacao();
+        }
+
+        async function carregarConfirmacao() {
+            const confirmacoes = await api.get(`/viagens/${viagemAtual.id}/confirmacoes`).then(r => r.json());
+            confirmacaoAtual = confirmacoes.find(c => c.passageiroId === passageiro.id);
+
+            if (confirmacaoAtual) {
+                document.getElementById('statusPresenca').textContent = confirmacaoAtual.status;
+                document.getElementById('statusPresenca').className = 'badge ' + (
+                    confirmacaoAtual.status === 'CONFIRMADO' ? 'badge-success' : 'badge-danger'
+                );
+                document.getElementById('enderecoDoDia').textContent = confirmacaoAtual.enderecoDoDia || '—';
+                atualizarBotao(confirmacaoAtual.status);
+            } else {
+                atualizarBotao('PENDENTE');
+            }
+        }
+
+        function atualizarBotao(status) {
+            const btn = document.getElementById('btnConfirmar');
+            if (status === 'CONFIRMADO') {
+                btn.textContent = 'Presença confirmada — Cancelar';
+                btn.className = 'btn-confirmar confirmado';
+            } else if (status === 'CANCELADO') {
+                btn.textContent = 'Presença cancelada — Confirmar novamente';
+                btn.className = 'btn-confirmar cancelado';
+            } else {
+                btn.textContent = 'Confirmar presença';
+                btn.className = 'btn-confirmar';
+            }
+        }
+
+        async function acaoPresenca() {
+            if (!viagemAtual) return;
+
+            if (confirmacaoAtual && confirmacaoAtual.status === 'CONFIRMADO') {
+                const response = await api.delete(`/viagens/${viagemAtual.id}/confirmacoes/${passageiro.id}`);
+                if (response && response.ok) await carregarConfirmacao();
+            } else {
+                const response = await api.post(`/viagens/${viagemAtual.id}/confirmacoes`, {
+                    passageiroId: passageiro.id,
+                    enderecoDoDia: document.getElementById('enderecoDoDia').textContent !== '—'
+                        ? document.getElementById('enderecoDoDia').textContent
+                        : null
+                });
+                if (response && response.ok) await carregarConfirmacao();
+            }
+        }
+
+        function abrirAlterarEndereco() {
+            document.getElementById('modalEndereco').classList.add('active');
+        }
+
+        function fecharAlterarEndereco() {
+            document.getElementById('modalEndereco').classList.remove('active');
+        }
+
+        async function alterarEndereco() {
+            const novoEndereco = document.getElementById('novoEndereco').value;
+            if (!novoEndereco || !viagemAtual) return;
+            document.getElementById('enderecoDoDia').textContent = novoEndereco;
+            fecharAlterarEndereco();
+
+            if (confirmacaoAtual && confirmacaoAtual.status === 'CONFIRMADO') {
+                await api.post(`/viagens/${viagemAtual.id}/confirmacoes`, {
+                    passageiroId: passageiro.id,
+                    enderecoDoDia: novoEndereco
+                });
+                await carregarConfirmacao();
+            }
+        }
+
+        function iniciarPollingLocalizacao() {
+            if (intervaloLocalizacao) return;
+            intervaloLocalizacao = setInterval(async () => {
+                if (!viagemAtual) return;
+                try {
+                    const loc = await api.get(`/viagens/${viagemAtual.id}/localizacao`).then(r => r.json());
+                    document.getElementById('localizacaoInfo').textContent =
+                        `Lat: ${loc.latitude.toFixed(4)}, Lng: ${loc.longitude.toFixed(4)} — ${new Date(loc.atualizadoEm).toLocaleTimeString()}`;
+                } catch (e) {
+                    document.getElementById('localizacaoInfo').textContent = 'Aguardando localização...';
+                }
+            }, 10000);
+        }
+
+        function sair() {
+            localStorage.removeItem('tokenPassageiro');
+            localStorage.removeItem('passageiro');
+            if (intervaloLocalizacao) clearInterval(intervaloLocalizacao);
+            window.location.href = 'login.html';
+        }
+
+        carregarViagens();
+    </script>
+</body>
+</html>
